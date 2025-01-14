@@ -11,6 +11,7 @@ export default function Cart() {
   const [cartDetails, setCartDetails] = useState<Product[]>([]);
   const [cartTotal, setCartTotal] = useState(0);
   const [cartWarning, setCartWarning] = useState(false);
+  const [cartLoading, setCartLoading] = useState(true);
 
   useEffect(() => {
     // Load cart items from local storage
@@ -21,8 +22,10 @@ export default function Cart() {
 
     // Fetch product data
     const fetchProducts = async () => {
+      setCartLoading(true);
       const result = await fetch("/api/products");
       const response = await result.json();
+      setCartLoading(false);
       setProducts(response.products);
     };
 
@@ -94,8 +97,11 @@ export default function Cart() {
   return (
     <div className='pt-16'>
       <Header cartItems={cartItems} cartWarning={cartWarning} />
+
       <div className='container mx-auto px-4'>
-        {cartDetails.length > 0 ? (
+        {cartLoading ? (
+          <div className='text-center'>Loading...</div>
+        ) : cartDetails.length > 0 ? (
           <div>
             {cartDetails.map((product) => (
               <div
