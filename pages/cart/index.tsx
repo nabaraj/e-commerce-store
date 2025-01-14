@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Product } from "../types/products";
-import { Header } from "../components/Header";
+import { Product } from "../../types/products";
+import { Header } from "../../components/Header";
 import Image from "next/image";
-import { formatINR } from "../utils";
+import { formatINR } from "../../utils";
 // import { StepperInput } from "../components/StepperInput";
 
 export default function Cart() {

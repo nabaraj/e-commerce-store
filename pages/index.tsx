@@ -1,12 +1,12 @@
 import { ChangeEvent, useEffect, useState } from "react";
-import { Filters, Product, SelectedFilters } from "./types/products";
-import { getFilterInput } from "./components/Filters";
-import { ProductBox } from "./components/ProductBox";
-import { Search } from "./components/Search";
-import { Header } from "./components/Header";
-import { GridSwitch } from "./components/GridSwitch";
-import { FilterComponent } from "./components/FilterComponent";
-import { ProductSkeleton } from "./components/ProductSkeleton";
+import { Filters, Product, SelectedFilters } from "../types/products";
+import { getFilterInput } from "../components/Filters";
+import { ProductBox } from "../components/ProductBox";
+import { Search } from "../components/Search";
+import { Header } from "../components/Header";
+import { GridSwitch } from "../components/GridSwitch";
+import { FilterComponent } from "../components/FilterComponent";
+import { ProductSkeleton } from "../components/ProductSkeleton";
 
 const defaultFilters = {
   type: [],
@@ -210,6 +210,7 @@ export default function Home() {
                 clickHandler={(num) => setGridCount(num)}
               />
             </div>
+            {gridCount}
             <div
               className={`productGridContainer grid grid-cols-1 md:grid-cols-${gridCount} gap-4`}
             >

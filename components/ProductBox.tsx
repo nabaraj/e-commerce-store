@@ -2,7 +2,7 @@ import Image from "next/image";
 import React, { ChangeEvent } from "react";
 import { Product, SelectedFilters } from "../types/products";
 import { formatINR } from "../utils";
-import { ColorClasses, Color } from "./../types/colors";
+import { ColorClasses, Color } from "../types/colors";
 interface ProductBoxProps {
   // Add your props here
   product: Product;
