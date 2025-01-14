@@ -210,7 +210,6 @@ export default function Home() {
                 clickHandler={(num) => setGridCount(num)}
               />
             </div>
-            {gridCount}
             <div
               className={`productGridContainer grid grid-cols-1 md:grid-cols-${gridCount} gap-4`}
             >
