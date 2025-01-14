@@ -1,114 +1,235 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { ChangeEvent, useEffect, useState } from "react";
+import { Filters, Product, SelectedFilters } from "./types/products";
+import { getFilterInput } from "./components/Filters";
+import { ProductBox } from "./components/ProductBox";
+import { Search } from "./components/Search";
+import { Header } from "./components/Header";
+import { GridSwitch } from "./components/GridSwitch";
+import { FilterComponent } from "./components/FilterComponent";
+import { ProductSkeleton } from "./components/ProductSkeleton";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const defaultFilters = {
+  type: [],
+  price: 0,
+  color: [],
+  gender: [],
+  search: ""
+};
 
 export default function Home() {
-  return (
-    <div
-      className={`${geistSans.variable} ${geistMono.variable} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              pages/index.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [products, setProducts] = useState([] as Product[]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [filters, setFilters] = useState({} as Filters);
+  const [cartItems, setCartItems] = useState({} as Record<string, number>);
+  const [cartWarning, setCartWarning] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState(
+    defaultFilters as SelectedFilters
+  );
+  const [gridCount, setGridCount] = useState(3);
+  const [filteredResult, setFilterdResult] = useState([] as Product[]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const getProducts = async () => {
+    setIsLoading(true);
+    const result = await fetch("./api/products");
+    const response = await result.json();
+    setIsLoading(false);
+    setProducts(response.products);
+    setSelectedFilters((filters) => ({
+      ...filters,
+      price: response.filters.price.max
+    }));
+    setFilters(response.filters);
+  };
+
+  useEffect(() => {
+    getProducts();
+    const storedCart = localStorage.getItem("cartItems");
+    if (storedCart) {
+      setCartItems(JSON.parse(storedCart));
+    }
+  }, []);
+
+  const updateFilter = (
+    input: string | number,
+    filterType: keyof SelectedFilters, // Ensure this is keyof SelectedFilters
+    event?: ChangeEvent<HTMLInputElement> | undefined
+  ) => {
+    setSelectedFilters((prevFilters) => {
+      // Create a copy of the previous filters
+      const updatedFilters = { ...prevFilters };
+      console.log(input, event);
+
+      switch (filterType) {
+        case "search":
+          updatedFilters.search = typeof input === "string" ? input : "";
+          break;
+
+        case "price":
+          updatedFilters.price = Number(input);
+          break;
+
+        default:
+          if (Array.isArray(prevFilters[filterType])) {
+            const filterArray = prevFilters[filterType] as string[];
+            updatedFilters[filterType] = event?.target.checked
+              ? [...filterArray, input as string]
+              : !event && filterType === "color"
+              ? [...filterArray, input as string]
+              : filterArray.filter((item) => item !== input);
+          }
+          break;
+      }
+
+      return updatedFilters;
+    });
+  };
+  const updateCart = (id: string | number) => {
+    console.log(id);
+    const productforcart = products.filter(
+      (product) => product.id.toString() === id.toString()
+    );
+    const productInCart = cartItems[id];
+    if (!productInCart) {
+      const updatedCartItem = { ...cartItems, [id.toString()]: 1 };
+      setCartItems(updatedCartItem);
+      window.localStorage.setItem("cartItems", JSON.stringify(updatedCartItem));
+    } else {
+      if (productInCart + 1 > productforcart[0].quantity) {
+        setCartWarning(true);
+        setTimeout(() => setCartWarning(false), 10000);
+      } else {
+        const updatedCartItem = { ...cartItems };
+        updatedCartItem[id] = updatedCartItem[id] + 1;
+        // window.localStorage.setItem("cartItems", cartItems.toString());
+        setCartItems(updatedCartItem);
+        window.localStorage.setItem(
+          "cartItems",
+          JSON.stringify(updatedCartItem)
+        );
+      }
+    }
+  };
+  useEffect(() => {
+    const filterProducts = (products: Product[]) => {
+      let productFiltered = products;
+      console.log({ selectedFilters });
+
+      productFiltered = selectedFilters.search
+        ? products.filter(
+            (product) =>
+              product.name
+                .toLowerCase()
+                .includes(selectedFilters.search.toLowerCase()) ||
+              product.color
+                .toLowerCase()
+                .includes(selectedFilters.search.toLowerCase()) ||
+              product.type
+                .toLowerCase()
+                .includes(selectedFilters.search.toLowerCase())
+          )
+        : products;
+
+      if (selectedFilters.color.length > 0) {
+        productFiltered = productFiltered.filter((product) => {
+          return selectedFilters.color.includes(product.color);
+        });
+      }
+
+      if (selectedFilters.gender.length > 0) {
+        productFiltered = productFiltered.filter((product) => {
+          return selectedFilters.gender.includes(product.gender);
+        });
+      }
+
+      if (selectedFilters.type.length > 0) {
+        productFiltered = productFiltered.filter((product) => {
+          console.log({ product });
+          return selectedFilters.type.includes(product.type);
+        });
+      }
+
+      productFiltered = productFiltered.filter((product) => {
+        return (
+          product.price >= (filters?.price?.min ?? 0) &&
+          product.price <= selectedFilters.price
+        );
+      });
+
+      // return productFiltered;
+      setFilterdResult(productFiltered);
+    };
+    filterProducts(products);
+  }, [products, selectedFilters, filters]);
+
+  return (
+    <div className='h-full pt-16'>
+      <Header cartItems={cartItems} cartWarning={cartWarning}>
+        <FilterComponent
+          filters={filters}
+          selectedFilters={selectedFilters}
+          getFilterInput={getFilterInput}
+          updateFilter={updateFilter}
+          className='md:hidden px-4'
+        />
+      </Header>
+
+      <div className='container mx-auto px-4'>
+        <div className='grid md:grid-cols-4 gap-3 grid-flow-dense'>
+          {/* Aside */}
+          <aside className='col-span-1 hidden md:block'>
+            <div className='fixed top-15 rounded-md border border-gray-300 p-4 bg-white '>
+              <FilterComponent
+                filters={filters}
+                selectedFilters={selectedFilters}
+                getFilterInput={getFilterInput}
+                updateFilter={updateFilter}
+              />
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <main
+            className={`font-[sans-serif] col-span-3 bg-white rounded-md border border-gray-300 p-4`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {/* Search Bar */}
+            <Search updateFilter={updateFilter} />
+            <div className='hidden col-span-3 md:flex justify-end mb-4'>
+              <GridSwitch
+                gridCount={1}
+                selectedGrid={gridCount}
+                clickHandler={(num) => setGridCount(num)}
+              />
+              <GridSwitch
+                gridCount={2}
+                selectedGrid={gridCount}
+                clickHandler={(num) => setGridCount(num)}
+              />
+              <GridSwitch
+                gridCount={3}
+                selectedGrid={gridCount}
+                clickHandler={(num) => setGridCount(num)}
+              />
+            </div>
+            <div
+              className={`productGridContainer grid grid-cols-1 md:grid-cols-${gridCount} gap-4`}
+            >
+              {/*loading*/}
+              {isLoading && <ProductSkeleton />}
+              {/* Products */}
+              {!isLoading &&
+                filteredResult.map((product) => (
+                  <ProductBox
+                    key={product.id}
+                    product={product}
+                    updateFilter={updateFilter}
+                    addToCart={updateCart}
+                  />
+                ))}
+            </div>
+          </main>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+      <div className=' bg-gray-100 fixed -z-10 top-0 bottom-0 left-0 right-0'></div>
     </div>
   );
 }
